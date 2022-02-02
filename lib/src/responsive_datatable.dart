@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'widget_parsing.dart';
+
 import 'datatable_header.dart';
+import 'widget_parsing.dart';
 
 class ResponsiveDatatable extends StatefulWidget {
   final bool showSelect;
   final List<DatatableHeader>? headers;
+  final TextStyle? headerTextStyle;
   final List<Map<String?, dynamic>>? source;
   final List<Map<String?, dynamic>>? selecteds;
   final Widget? title;
@@ -24,9 +26,11 @@ class ResponsiveDatatable extends StatefulWidget {
   final List<bool>? expanded;
   final Function? dropContainer;
   final List<ScreenSize> reponseScreenSizes;
+  final double width;
 
   const ResponsiveDatatable({
     Key? key,
+    required this.width,
     this.showSelect = false,
     this.onSelectAll,
     this.onSelect,
@@ -39,6 +43,7 @@ class ResponsiveDatatable extends StatefulWidget {
     this.actions,
     this.footers,
     this.sortColumn,
+    this.headerTextStyle,
     this.sortAscending,
     this.isLoading = false,
     this.autoHeight = true,
@@ -88,6 +93,7 @@ class _ResponsiveDatatableState extends State<ResponsiveDatatable> {
                           Text(
                             "${header.text}",
                             textAlign: header.textAlign,
+                            style: widget.headerTextStyle,
                           ),
                           if (widget.sortColumn != null &&
                               widget.sortColumn == header.value)
@@ -106,74 +112,6 @@ class _ResponsiveDatatableState extends State<ResponsiveDatatable> {
     );
   }
 
-  List<Widget> mobileList() {
-    return widget.source!.map((data) {
-      return InkWell(
-        onTap: widget.onTabRow != null
-            ? () {
-                widget.onTabRow!(data);
-              }
-            : null,
-        child: Container(
-          decoration: BoxDecoration(
-              border: Border(
-                  bottom: BorderSide(color: Colors.grey[300]!, width: 1))),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Spacer(),
-                  if (widget.showSelect && widget.selecteds != null)
-                    Checkbox(
-                        value: widget.selecteds!.contains(data),
-                        onChanged: (value) {
-                          if (widget.onSelect != null) {
-                            widget.onSelect!(value, data);
-                          }
-                        }),
-                ],
-              ),
-              if (widget.commonMobileView) widget.dropContainer!(data),
-              if (!widget.commonMobileView)
-                ...widget.headers!
-                    .where((header) => header.show == true)
-                    .toList()
-                    .map(
-                      (header) => Container(
-                        padding: const EdgeInsets.all(11),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            header.headerBuilder != null
-                                ? header.headerBuilder!(header.value)
-                                : Text(
-                                    "${header.text}",
-                                    overflow: TextOverflow.clip,
-                                  ),
-                            const Spacer(),
-                            header.sourceBuilder != null
-                                ? header.sourceBuilder!(
-                                    data[header.value], data)
-                                : header.editable
-                                    ? editAbleWidget(
-                                        data: data,
-                                        header: header,
-                                        textAlign: TextAlign.end,
-                                      )
-                                    : Text("${data[header.value]}")
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList()
-            ],
-          ),
-        ),
-      );
-    }).toList();
-  }
 
   Alignment headerAlignSwitch(TextAlign? textAlign) {
     switch (textAlign) {
@@ -226,6 +164,7 @@ class _ResponsiveDatatableState extends State<ResponsiveDatatable> {
                                   Text(
                                     "${header.text}",
                                     textAlign: header.textAlign,
+                                    style: widget.headerTextStyle,
                                   ),
                                   if (widget.sortColumn != null &&
                                       widget.sortColumn == header.value)
@@ -310,8 +249,8 @@ class _ResponsiveDatatableState extends State<ResponsiveDatatable> {
               ),
             ),
           ),
-          if (widget.isExpandRows && widget.expanded![index])
-            widget.dropContainer!(data)
+          // if (widget.isExpandRows && widget.expanded![index])
+          //   widget.dropContainer!(data)
         ],
       ));
     }
@@ -346,103 +285,60 @@ class _ResponsiveDatatableState extends State<ResponsiveDatatable> {
 
   @override
   Widget build(BuildContext context) {
-    return widget.reponseScreenSizes.isNotEmpty &&
-            widget.reponseScreenSizes.contains(context.screenSize)
-        ?
-        /**
-         * for small screen
-         */
-        Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              //title and actions
-              if (widget.title != null || widget.actions != null)
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                      border:
-                          Border(bottom: BorderSide(color: Colors.grey[300]!))),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      if (widget.title != null) widget.title!,
-                      if (widget.actions != null) ...widget.actions!
-                    ],
+    return
+      SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child:
+      SizedBox(
+        width: widget.width,
+        child: Column(
+          children: [
+            //title and actions
+            if (widget.title != null || widget.actions != null)
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey[300]!),
                   ),
                 ),
-
-              if (widget.autoHeight)
-                Column(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    if (widget.showSelect && widget.selecteds != null)
-                      mobileHeader(),
-                    if (widget.isLoading) const LinearProgressIndicator(),
-                    //mobileList
-                    ...mobileList(),
+                    if (widget.title != null) widget.title!,
+                    if (widget.actions != null) ...widget.actions!,
                   ],
                 ),
-              if (!widget.autoHeight)
+              ),
+
+            //desktopHeader
+            if (widget.headers != null && widget.headers!.isNotEmpty)
+              desktopHeader(),
+
+            if (widget.isLoading) const LinearProgressIndicator(),
+
+            if (widget.autoHeight) Column(children: desktopList()),
+
+            if (!widget.autoHeight)
+              // desktopList
+              if (widget.source != null && widget.source!.isNotEmpty)
                 Expanded(
                   child: ListView(
-                    // itemCount: source.length,
-                    children: [
-                      if (widget.showSelect && widget.selecteds != null)
-                        mobileHeader(),
-                      if (widget.isLoading) const LinearProgressIndicator(),
-                      //mobileList
-                      ...mobileList(),
-                    ],
-                  ),
-                ),
-              //footer
-              if (widget.footers != null)
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [...widget.footers!],
-                )
-            ],
-          )
-        /**
-          * for large screen
-          */
-        : Column(
-            children: [
-              //title and actions
-              if (widget.title != null || widget.actions != null)
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                      border:
-                          Border(bottom: BorderSide(color: Colors.grey[300]!))),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      if (widget.title != null) widget.title!,
-                      if (widget.actions != null) ...widget.actions!
-                    ],
+                    children: desktopList(),
                   ),
                 ),
 
-              //desktopHeader
-              if (widget.headers != null && widget.headers!.isNotEmpty)
-                desktopHeader(),
-
-              if (widget.isLoading) const LinearProgressIndicator(),
-
-              if (widget.autoHeight) Column(children: desktopList()),
-
-              if (!widget.autoHeight)
-                // desktopList
-                if (widget.source != null && widget.source!.isNotEmpty)
-                  Expanded(child: ListView(children: desktopList())),
-
-              //footer
-              if (widget.footers != null)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [...widget.footers!],
-                )
-            ],
-          );
+            //footer
+            if (widget.footers != null)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ...widget.footers!,
+                ],
+              )
+          ],
+        ),
+      ),
+    );
   }
 }
